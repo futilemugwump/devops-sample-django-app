@@ -1,0 +1,38 @@
+services:
+  database:
+    container_name: db
+    image: postgres
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=worker
+      - POSTGRES_PASSWORD=worker
+      - POSTGRES_DB=app
+    volumes:
+      - db-data:/var/lib/postgresql/db-data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-d", "app" ]
+      interval: 10s
+      retries: 5
+
+  code:
+    container_name: code
+    build: .
+    ports:
+      - '8000:8000'
+    environment:
+      DJANGO_DB_HOST: db
+      DJANGO_DB_NAME: app
+      DJANGO_DB_USER: worker
+      DJANGO_DB_PASS: worker
+      DJANGO_DB_PORT: '5432'
+      DJANGO_DEBUG: 'False'
+    volumes:
+      - media-content:/etc/code/media
+    command: sh -c "python manage.py migrate && uwsgi --ini uwsgi.ini"
+    depends_on:
+      database:
+        condition: service_healthy
+volumes:
+  db-data:
+  media-content:
